@@ -135,6 +135,35 @@ def main() -> None:
             "stop=", record.stop_reason,
         )
 
+    truncation_run_id = f"{run_id}-truncation"
+    truncation_num_predict = 8
+    prompt = load_prompt(prompt_path, str(cases["E11"]["source"]))
+    payload, latency_ms = call_ollama(
+        base_url=settings.ollama_base_url,
+        model_id=model.model_id,
+        prompt=prompt,
+        temperature=temperature,
+        num_predict=truncation_num_predict,
+    )
+    done_reason = payload.get("done_reason")
+    error_type = "TruncatedResponseError" if done_reason == "length" else None
+    truncation_record = record_from_payload(
+        payload=payload,
+        run_id=truncation_run_id,
+        model_id=model.model_id,
+        case_id="E11",
+        temperature=temperature,
+        num_predict=truncation_num_predict,
+        latency_ms=latency_ms,
+        error_type=error_type,
+    )
+    append_record(truncation_record, truncation_run_id)
+    print(
+        "truncation",
+        "stop=", truncation_record.stop_reason,
+        "error_type=", truncation_record.error_type,
+    )
+
 
 if __name__ == "__main__":
     main()
