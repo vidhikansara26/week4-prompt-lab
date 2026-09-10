@@ -39,11 +39,13 @@ class CallRecord(BaseModel):
     response_text: str | None
 
 
-
-
 def compute_cost(model_id: str, input_tokens: int, output_tokens: int) -> float:
-    """Return the configured provider charge for one model call."""
-    raise NotImplementedError
+    """Return 0.0 for a configured local model, raise if the id is unknown"""
+    settings = Settings.from_env()
+    for config in settings.models.values():
+        if config.model_id == model_id:
+            return float(config.cost(input_tokens, output_tokens))
+    raise UnknownModelError(f"Unknown model identifier: {model_id}")
 
 
 def append_record(record: CallRecord, run_id: str) -> None:
