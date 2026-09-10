@@ -4,9 +4,9 @@ Implement this module by following assignments/W02_Day1_Assignment_LOCAL.md.
 """
 
 from __future__ import annotations
-from pathlib import Path
 
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
