@@ -38,8 +38,8 @@ class CallRecord(BaseModel):
     cached_input_tokens: int | None
     latency_ms: int
     cost_usd: float
-    stop_reason : str | None
-    error_type : str | None
+    stop_reason: str | None
+    error_type: str | None
     response_text: str | None
 
 
