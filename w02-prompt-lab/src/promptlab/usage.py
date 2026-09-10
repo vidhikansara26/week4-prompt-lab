@@ -17,7 +17,28 @@ class CallRecord(BaseModel):
     Add the exact fields and types specified by the Day 1 assignment.
     """
 
-    pass
+    record_id: str
+    run_id: str
+    timestamp: datetime
+    provider: Literal["ollama"]
+    model_id: str
+    task: Literal["triage", "summarization", "extraction"]
+    case_id: str
+    prompt_id: str
+    prompt_version: str
+    attempt: int
+    temperature: float
+    max_output_tokens: int
+    input_tokens: int
+    output_tokens: int
+    cached_input_tokens: int | None
+    latency_ms: int
+    cost_usd: float
+    stop_reason : str | None
+    error_type : str | None
+    response_text: str | None
+
+
 
 
 def compute_cost(model_id: str, input_tokens: int, output_tokens: int) -> float:
