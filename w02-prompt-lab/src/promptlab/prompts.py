@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 from pydantic import BaseModel, ConfigDict
 
@@ -60,7 +60,7 @@ def _split_layers(text: str) -> tuple[str, str]:
     user_start = text.index(user_marker, system_start)
 
     system = text[system_start:user_start].strip()
-    user = text[user_start + len(user_marker):].strip()
+    user = text[user_start + len(user_marker) :].strip()
     return system, user
 
 
@@ -93,6 +93,13 @@ def _placeholders(template: str) -> set[str]:
     return set(_PLACEHOLDER.findall(template))
 
 
+def _escape_untrusted(text: str) -> str:
+    """Stop customer text from closing the surrounding XML-ish markers."""
+    return text.replace(CUSTOMER_MARKER_CLOSE, "&lt;/customer_message&gt;").replace(
+        DOCUMENT_MARKER_CLOSE, "&lt;/document&gt;"
+    )
+
+
 def render_user(
     template: PromptTemplate,
     variables: Mapping[str, str],
@@ -108,4 +115,22 @@ def render_user(
     - untrusted text is supplied through ``document_text``
     - literal JSON braces in prompt examples must remain literal
     """
-    raise NotImplementedError
+    required = _placeholders(template.user_template)
+    values: dict[str, str] = {}
+    missing: list[str] = []
+
+    for name in sorted(required):
+        if name == "document_text":
+            values[name] = _escape_untrusted(untrusted)
+        elif name in variables:
+            values[name] = variables[name]
+        else:
+            missing.append(name)
+
+    if missing:
+        raise MissingPromptVariableError(missing)
+
+    def replacer(match: re.Match[str]) -> str:
+        return values[match.group(1)]
+
+    return _PLACEHOLDER.sub(replacer, template.user_template)
