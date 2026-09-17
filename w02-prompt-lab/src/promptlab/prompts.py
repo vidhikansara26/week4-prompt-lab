@@ -15,6 +15,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+from promptlab.schemas import TaskName
+
 PROMPT_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 DOCUMENT_MARKER_CLOSE = "</document>"
@@ -134,3 +136,30 @@ def render_user(
         return values[match.group(1)]
 
     return _PLACEHOLDER.sub(replacer, template.user_template)
+
+
+CURRENT_PROMPTS: dict[TaskName, tuple[str, str]] = {
+    "summarization": ("summarize", "v1"),
+    "extraction": ("extract", "v2"),
+    "triage": ("triage", "v1"),
+}
+
+ADAPTED_PROMPTS: dict[tuple[TaskName, str], tuple[str, str]] = {
+    ("extraction", "qwen"): ("extract", "v3"),
+}
+
+
+def current_prompt(task: TaskName, model_name: str = "mistral") -> tuple[str, str]:
+    """Return the prompt id and version for a task/model pair."""
+    adapted = ADAPTED_PROMPTS.get((task, model_name))
+    if adapted is not None:
+        return adapted
+    return CURRENT_PROMPTS[task]
+
+
+def is_prompt_transfer(task: TaskName, model_name: str) -> bool:
+    """True when the second model is running the unadapted Day 5 prompt."""
+    return (
+        model_name != "mistral"
+        and current_prompt(task, model_name) == CURRENT_PROMPTS[task]
+    )

@@ -8,7 +8,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 Task = Literal["triage", "summarization", "extraction"]
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +55,9 @@ class GoldLabel(BaseModel):
     """Gold fields consumed by the current deterministic Week 2 scorers."""
 
     model_config = ConfigDict(extra="allow")
+    version_group: str | None = None
+    expected_current_case_id: str | None = None
+    as_of: str | None = None
 
     id: str
     task: Task
@@ -127,10 +129,10 @@ def _load_gold_rows(task: Task) -> list[dict[str, Any]]:
     # cases/gold/triage.jsonl
     jsonl_path = _GOLD_DIR / f"{task}.jsonl"
     if jsonl_path.exists():
-        rows = _read_jsonl(jsonl_path)
-        for row in rows:
+        jsonl_rows = _read_jsonl(jsonl_path)
+        for row in jsonl_rows:
             row.setdefault("task", task)
-        return rows
+        return jsonl_rows
 
     # cases/gold/triage/*.json
     task_dir = _GOLD_DIR / task
@@ -205,7 +207,7 @@ def validate_corpus() -> dict[str, int]:
         "extraction",
     )
 
-    counts = {task: len(load_cases(task)) for task in tasks}
+    counts: dict[str, int] = {task: len(load_cases(task)) for task in tasks}
 
     all_ids: list[str] = []
     for task in tasks:

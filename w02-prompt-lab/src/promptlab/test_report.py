@@ -1,20 +1,21 @@
 from decimal import Decimal
+from pathlib import Path
 
+from promptlab.config import Settings
 from promptlab.records import OutputRecord, ScoreRecord, UsageRecord
 from promptlab.report import write_reports
 
 
 def test_report_is_generated_from_records(tmp_path: object) -> None:
-    from pathlib import Path
-
     root = Path(str(tmp_path))
+    model_id = Settings.from_env().models["mistral"].model_id
     usage = [
         UsageRecord(
             run_id="demo",
             task="triage",
             case_id="T01",
             model_name="mistral",
-            model_id="mistral:7b",
+            model_id=model_id,
             prompt_version="triage-mistral-v1",
             attempt=1,
             kind="primary",
@@ -31,7 +32,7 @@ def test_report_is_generated_from_records(tmp_path: object) -> None:
             task="triage",
             case_id="T01",
             model_name="mistral",
-            model_id="mistral:7b",
+            model_id=model_id,
             prompt_version="triage-mistral-v1",
             succeeded=True,
             repairs=0,

@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 
 from promptlab.adapters.base import CompletionRequest, CompletionResult
-from promptlab.config import Settings
+from promptlab.config import ModelConfig, Settings
 from promptlab.errors import (
     PermanentProviderError,
     TransientProviderError,
@@ -27,10 +27,14 @@ class OllamaAdapter:
 
     def __init__(self, model_id: str) -> None:
         settings = Settings.from_env()
-        known_ids = {config.model_id for config in settings.models.values()}
-        if model_id not in known_ids:
+        config = next(
+            (item for item in settings.models.values() if item.model_id == model_id),
+            None,
+        )
+        if config is None:
             raise UnknownModelError(f"Unknown model identifier: {model_id}")
         self.model_id = model_id
+        self._config: ModelConfig = config
         self._base_url = settings.ollama_base_url
 
     def complete(self, request: CompletionRequest, run_id: str) -> CompletionResult:
@@ -72,18 +76,21 @@ class OllamaAdapter:
         started = time.perf_counter()
         payload: dict[str, Any] = {}
         error_type: str | None = None
+        body: dict[str, Any] = {
+            "model": self.model_id,
+            "prompt": f"{request.system}\n\n{request.user_content}",
+            "stream": False,
+            "options": {
+                "temperature": request.temperature,
+                "num_predict": request.max_output_tokens,
+            },
+        }
+        if self._config.think is not None:
+            body["think"] = self._config.think
         try:
             response = httpx.post(
                 f"{self._base_url}/api/generate",
-                json={
-                    "model": self.model_id,
-                    "prompt": f"{request.system}\n\n{request.user_content}",
-                    "stream": False,
-                    "options": {
-                        "temperature": request.temperature,
-                        "num_predict": request.max_output_tokens,
-                    },
-                },
+                json=body,
                 timeout=180.0,
             )
             try:

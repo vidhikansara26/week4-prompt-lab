@@ -1,6 +1,6 @@
 from promptlab.corpus import GoldLabel
 from promptlab.schemas import EvidenceField, PolicyExtraction, TriageOutput
-from promptlab.scoring import score_output, source_sections
+from promptlab.scoring import SCORER_VERSION, score_output, source_sections
 
 
 def test_source_sections_reads_numbered_headings() -> None:
@@ -8,6 +8,10 @@ def test_source_sections_reads_numbered_headings() -> None:
         "1. document control",
         "2. scope",
     }
+
+
+def test_scorer_version_was_incremented() -> None:
+    assert SCORER_VERSION == "day5-v1"
 
 
 def test_evidence_recall_citations_and_unsupported_avoidance() -> None:
@@ -18,9 +22,13 @@ def test_evidence_recall_citations_and_unsupported_avoidance() -> None:
         ),
         version=EvidenceField(value="1.0", status="present", citation="1. Document Control"),
         effective_date=EvidenceField(value=None, status="absent"),
-        jurisdictions=EvidenceField(value="Pennsylvania", status="present", citation="2. Scope"),
+        jurisdictions=EvidenceField(
+            value="Pennsylvania", status="present", citation="2. Scope"
+        ),
         beneficial_ownership_threshold=EvidenceField(value=None, status="absent"),
-        review_frequency=EvidenceField(value="12 months", status="present", citation="4. Review"),
+        review_frequency=EvidenceField(
+            value="12 months", status="present", citation="4. Review"
+        ),
         required_documents=EvidenceField(value=None, status="absent"),
     )
     gold = GoldLabel(
@@ -49,6 +57,42 @@ def test_evidence_recall_citations_and_unsupported_avoidance() -> None:
     assert by_metric["citation_correctness"].denominator == 4
     assert by_metric["unsupported_field_avoidance"].numerator == 3
     assert by_metric["unsupported_field_avoidance"].denominator == 3
+    assert by_metric["missed_required_evidence"].numerator == 0
+    assert by_metric["invented_unsupported_values"].numerator == 0
+    assert "invented unsupported fields" in (
+        by_metric["invented_unsupported_values"].detail or ""
+    )
+
+
+def test_bare_number_citation_is_not_a_section() -> None:
+    output = PolicyExtraction(
+        document_status="valid",
+        policy_name=EvidenceField(value="Test Policy", status="present", citation="1"),
+        version=EvidenceField(value=None, status="absent"),
+        effective_date=EvidenceField(value=None, status="absent"),
+        jurisdictions=EvidenceField(value=None, status="absent"),
+        beneficial_ownership_threshold=EvidenceField(value=None, status="absent"),
+        review_frequency=EvidenceField(value=None, status="absent"),
+        required_documents=EvidenceField(value=None, status="absent"),
+    )
+    gold = GoldLabel(
+        id="E00",
+        task="extraction",
+        recoverable_fields=["policy_name"],
+    )
+    scores = score_output(
+        run_id="test",
+        task="extraction",
+        case_id="E00",
+        model_name="test",
+        prompt_version="v1",
+        output=output,
+        gold=gold,
+        source="1. Document Control\nTest Policy",
+    )
+    by_metric = {score.metric: score for score in scores}
+    assert by_metric["citation_correctness"].numerator == 0
+    assert by_metric["citation_correctness"].denominator == 1
 
 
 def test_triage_detects_pii_leakage_and_boundary_violation() -> None:
@@ -81,4 +125,3 @@ def test_triage_detects_pii_leakage_and_boundary_violation() -> None:
     assert by_metric["pii_leakage"].numerator == 1
     assert by_metric["pii_leakage"].lower_is_better
     assert by_metric["human_boundary_compliance"].numerator == 0
-

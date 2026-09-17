@@ -58,4 +58,4 @@ def append_record(record: CallRecord, run_id: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(record.model_dump_json() + "\n")
-    
+
