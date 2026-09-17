@@ -56,6 +56,8 @@ class ScoreRecord(Record):
     denominator: int
     lower_is_better: bool = False
     detail: str | None = None
+    model_id: str | None = None
+    prompt_id: str | None = None
 
 
 def append_record(path: Path, record: Record) -> None:
