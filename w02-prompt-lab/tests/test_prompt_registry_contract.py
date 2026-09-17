@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 
 import promptlab.prompts as prompts
-from promptlab.prompts import MissingPromptVariableError, PromptTemplate
+from promptlab.prompts import (
+    MissingPromptVariableError,
+    PromptTemplate,
+    current_prompt,
+    is_prompt_transfer,
+)
 
 
 def _template(user_template: str) -> PromptTemplate:
@@ -78,3 +83,16 @@ def test_render_user_does_not_break_on_literal_json_braces() -> None:
 
     assert '{"queue": "card_dispute"}' in rendered
     assert "T02" in rendered
+
+
+def test_day5_prompt_versions_keep_extract_v2_and_adapt_qwen() -> None:
+    assert current_prompt("summarization", "mistral") == ("summarize", "v1")
+    assert current_prompt("summarization", "qwen") == ("summarize", "v1")
+    assert current_prompt("extraction", "mistral") == ("extract", "v2")
+    assert current_prompt("extraction", "qwen") == ("extract", "v3")
+    assert current_prompt("triage", "mistral") == ("triage", "v1")
+    assert current_prompt("triage", "qwen") == ("triage", "v1")
+    assert is_prompt_transfer("extraction", "qwen") is False
+    assert is_prompt_transfer("summarization", "qwen") is True
+    assert is_prompt_transfer("triage", "qwen") is True
+
