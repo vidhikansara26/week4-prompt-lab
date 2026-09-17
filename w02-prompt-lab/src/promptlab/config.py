@@ -18,10 +18,23 @@ PII_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
+def _optional_bool(raw: str | None) -> bool | None:
+    if raw is None or raw.strip() == "":
+        return None
+    lowered = raw.strip().lower()
+    if lowered in {"1", "true", "yes", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"invalid boolean {raw!r}")
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     logical_name: str
     model_id: str
+    think: bool | None = None
+    max_output_tokens: int = 512
     input_usd_per_million: Decimal = Decimal("0")
     output_usd_per_million: Decimal = Decimal("0")
 
@@ -48,13 +61,26 @@ class Settings:
         load_dotenv(PROJECT_ROOT / ".env")
         model_a = os.getenv("MODEL_A", "mistral:7b")
         model_b = os.getenv("MODEL_B", "qwen3:8b")
+        qwen_think = _optional_bool(os.getenv("MODEL_B_THINK"))
+        if qwen_think is None:
+            qwen_think = False
         return cls(
             ollama_base_url=os.getenv(
                 "OLLAMA_BASE_URL", "http://host.docker.internal:11434"
             ).rstrip("/"),
             models={
-                "mistral": ModelConfig(logical_name="mistral", model_id=model_a),
-                "qwen": ModelConfig(logical_name="qwen", model_id=model_b),
+                "mistral": ModelConfig(
+                    logical_name="mistral",
+                    model_id=model_a,
+                    think=_optional_bool(os.getenv("MODEL_A_THINK")),
+                    max_output_tokens=int(os.getenv("MODEL_A_MAX_OUTPUT_TOKENS", "512")),
+                ),
+                "qwen": ModelConfig(
+                    logical_name="qwen",
+                    model_id=model_b,
+                    think=qwen_think,
+                    max_output_tokens=int(os.getenv("MODEL_B_MAX_OUTPUT_TOKENS", "512")),
+                ),
             },
             temperature=float(os.getenv("TEMPERATURE", "0.0")),
             max_retries=int(os.getenv("MAX_RETRIES", "2")),

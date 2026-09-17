@@ -255,3 +255,30 @@ def test_truncation_is_recorded_and_not_retried(
     assert record.attempt == 1
     assert record.stop_reason == "length"
     assert record.error_type == TruncatedResponseError.__name__
+    assert result.text is None
+
+
+def test_think_flag_comes_from_model_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    captured: dict[str, object] = {}
+
+    def fake_post(*args: object, **kwargs: object) -> FakeResponse:
+        captured["json"] = kwargs["json"]
+        return FakeResponse(text="ok")
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    OllamaAdapter(model_id=_model_id("mistral")).complete(_request(), "mistral-think")
+    mistral_body = captured["json"]
+    assert isinstance(mistral_body, dict)
+    assert "think" not in mistral_body
+
+    OllamaAdapter(model_id=_model_id("qwen")).complete(_request(), "qwen-think")
+    qwen_body = captured["json"]
+    assert isinstance(qwen_body, dict)
+    assert qwen_body.get("think") is False
+    options = qwen_body.get("options")
+    assert isinstance(options, dict)
+    assert "think" not in options
